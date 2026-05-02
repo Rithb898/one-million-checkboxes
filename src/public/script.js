@@ -33,7 +33,7 @@ function createCheckbox(globalIndex) {
   checkbox.id = `checkbox-${globalIndex + 1}`;
   checkbox.checked = allCheckboxStates[globalIndex];
   checkbox.className =
-    "w-4 h-4 cursor-pointer rounded border border-gray-600 bg-gray-800 appearance-none checked:bg-indigo-500 checked:border-indigo-400 hover:border-indigo-400 transition-all duration-150 focus:ring-1 focus:ring-indigo-500/50";
+    "size-6 cursor-pointer rounded border border-gray-600 bg-gray-800 appearance-none checked:bg-indigo-500 checked:border-indigo-400 hover:border-indigo-400 transition-all duration-150 focus:ring-1 focus:ring-indigo-500/50";
 
   checkbox.addEventListener("change", (event) => {
     const isChecked = event.target.checked;
