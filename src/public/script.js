@@ -1,12 +1,24 @@
 const socket = io();
 const checkboxContainer = document.querySelector(".checkbox-container");
 const checkbox_count = 500;
+const pendingClicks = new Map();
 
 socket.on("server:checkbox:change", (data) => {
+  pendingClicks.delete(data.id);
   const checkbox = document.getElementById(data.id);
   if (checkbox) {
     checkbox.checked = data.checked;
   }
+});
+
+socket.on("rate-limited", (data) => {
+  pendingClicks.forEach((isChecked, id) => {
+    const checkbox = document.getElementById(id);
+    if (checkbox) {
+      checkbox.checked = !isChecked;
+    }
+  });
+  pendingClicks.clear();
 });
 
 window.addEventListener("load", async () => {
@@ -23,6 +35,7 @@ window.addEventListener("load", async () => {
 
       checkbox.addEventListener("change", (event) => {
         const isChecked = event.target.checked;
+        pendingClicks.set(checkbox.id, isChecked);
         socket.emit("client:checkbox:change", {
           id: checkbox.id,
           checked: isChecked,

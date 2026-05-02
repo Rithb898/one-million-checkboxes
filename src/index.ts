@@ -8,6 +8,9 @@ import { publisher, redis, subscriber } from "./lib/redis.js";
 
 const checkbox_size = 500;
 const checkbox_state_key = "one-million-checkboxes:checkboxes";
+const rateLimitWindow = 1000;
+const rateLimitMax = 1;
+const rateLimits = new Map<string, { count: number; resetAt: number }>();
 
 const PORT = process.env.PORT || 3000;
 
@@ -29,7 +32,28 @@ subscriber.on("message", (channel, data) => {
 io.on("connection", (socket) => {
   console.log("A user connected", socket.id);
 
+  socket.on("disconnect", () => {
+    rateLimits.delete(socket.id);
+  });
+
   socket.on("client:checkbox:change", async (data) => {
+    const now = Date.now();
+    const limit = rateLimits.get(socket.id);
+    if (limit) {
+      if (now < limit.resetAt) {
+        if (limit.count >= rateLimitMax) {
+          socket.emit("rate-limited", { retryAfter: limit.resetAt - now });
+          return;
+        }
+        limit.count++;
+      } else {
+        limit.count = 1;
+        limit.resetAt = now + rateLimitWindow;
+      }
+    } else {
+      rateLimits.set(socket.id, { count: 1, resetAt: now + rateLimitWindow });
+    }
+
     const index = parseInt(data.id.replace("checkbox-", "")) - 1;
     const existingState = await redis.get(checkbox_state_key);
     let remoteData;
