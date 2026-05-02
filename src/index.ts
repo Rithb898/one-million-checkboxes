@@ -6,7 +6,7 @@ import express from "express";
 import { Server } from "socket.io";
 import { publisher, redis, subscriber } from "./lib/redis.js";
 
-const checkbox_size = 500;
+const checkbox_size = 1000000;
 const checkbox_state_key = "one-million-checkboxes:checkboxes";
 const rateLimitWindow = 1000;
 const rateLimitMax = 1;

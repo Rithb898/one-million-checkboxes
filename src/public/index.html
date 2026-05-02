@@ -72,11 +72,18 @@
           </div>
           <div class="flex gap-2"></div>
         </div>
-        <div class="checkbox-grid h-[65vh] overflow-auto p-4">
+        <div
+          id="checkbox-grid"
+          class="checkbox-grid h-[65vh] overflow-auto p-4"
+        >
           <div
+            id="checkbox-container"
             class="checkbox-container grid gap-1"
-            style="grid-template-columns: repeat(auto-fill, minmax(24px, 1fr))"
+            style="grid-template-columns: repeat(auto-fill, minmax(16px, 1fr))"
           ></div>
+          <div id="loading-indicator" class="text-center py-4 text-gray-400">
+            Loading more checkboxes...
+          </div>
         </div>
       </div>
 
