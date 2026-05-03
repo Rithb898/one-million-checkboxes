@@ -5,11 +5,14 @@ import path from "node:path";
 import express from "express";
 import { Server } from "socket.io";
 import { publisher, redis, subscriber } from "./lib/redis.js";
+import { sessionMiddleware } from "./lib/session.js";
+import { authRouter } from "./routes/auth.js";
+import { requireAuth } from "./middleware/auth.js";
 
 const checkbox_size = 1000000;
 const checkbox_state_key = "one-million-checkboxes:checkboxes";
 const rateLimitWindow = 1000;
-const rateLimitMax = 1;
+const rateLimitMax = 10;
 const rateLimits = new Map<string, { count: number; resetAt: number }>();
 
 const PORT = process.env.PORT || 3000;
@@ -20,6 +23,12 @@ const server = http.createServer(app);
 const io = new Server();
 io.attach(server);
 
+app.set("trust proxy", 1);
+
+app.use(sessionMiddleware);
+
+app.use("/auth", authRouter);
+
 subscriber.subscribe("one-million-checkboxes:server:checkbox:change");
 subscriber.on("message", (channel, data) => {
   if (channel === "one-million-checkboxes:server:checkbox:change") {
@@ -28,15 +37,27 @@ subscriber.on("message", (channel, data) => {
   }
 });
 
-// Socket.IO
+io.use((socket, next) => {
+  const session = socket.request.session;
+  if (session?.user) {
+    socket.data.user = session.user;
+  }
+  next();
+});
+
 io.on("connection", (socket) => {
-  console.log("A user connected", socket.id);
+  console.log("A user connected", socket.id, socket.data.user ? `(authenticated as ${socket.data.user.id})` : "(anonymous)");
 
   socket.on("disconnect", () => {
     rateLimits.delete(socket.id);
   });
 
   socket.on("client:checkbox:change", async (data) => {
+    if (!socket.data.user) {
+      socket.emit("auth-required");
+      return;
+    }
+
     const now = Date.now();
     const limit = rateLimits.get(socket.id);
     if (limit) {
@@ -71,8 +92,8 @@ io.on("connection", (socket) => {
   });
 });
 
-// Express
 app.use(express.static(path.resolve("./src/public")));
+
 app.get("/health", (req, res) => {
   res.json({ healthy: true });
 });
@@ -84,6 +105,10 @@ app.get("/checkboxes", async (req, res) => {
     return res.json({ checkboxes: remoteData });
   }
   return res.json({ checkboxes: new Array(checkbox_size).fill(false) });
+});
+
+app.get("/api/protected", requireAuth, (req, res) => {
+  res.json({ message: "This is a protected endpoint", user: req.session.user });
 });
 
 server.listen(PORT, () => {

@@ -4,6 +4,11 @@ const checkboxGrid = document.getElementById("checkbox-grid");
 const loadingIndicator = document.getElementById("loading-indicator");
 const checkedCountEl = document.getElementById("checked-count");
 const progressEl = document.getElementById("progress");
+const loginBtn = document.getElementById("login-btn");
+const logoutBtn = document.getElementById("logout-btn");
+const userInfo = document.getElementById("user-info");
+const userName = document.getElementById("user-name");
+const authWarning = document.getElementById("auth-warning");
 
 const checkbox_count = 1000000;
 const batch_size = 500;
@@ -15,6 +20,8 @@ let totalChecked = 0;
 let lastRenderedIndex = 0;
 let isLoading = false;
 let loadedFromServer = false;
+let currentUser = null;
+let isAuthenticated = false;
 
 function formatNumber(num) {
   return num.toLocaleString();
@@ -27,6 +34,35 @@ function updateStats() {
   progressEl.textContent = percentage + "%";
 }
 
+function updateAuthUI() {
+  if (isAuthenticated && currentUser) {
+    loginBtn.classList.add("hidden");
+    userInfo.classList.remove("hidden");
+    userInfo.classList.add("flex");
+    userName.textContent = currentUser.name || currentUser.email || "User";
+    authWarning.classList.add("hidden");
+  } else {
+    loginBtn.classList.remove("hidden");
+    userInfo.classList.add("hidden");
+    userInfo.classList.remove("flex");
+    authWarning.classList.remove("hidden");
+  }
+}
+
+async function fetchCurrentUser() {
+  try {
+    const res = await fetch("/auth/me");
+    if (res.ok) {
+      const data = await res.json();
+      isAuthenticated = data.authenticated;
+      currentUser = data.user;
+      updateAuthUI();
+    }
+  } catch (error) {
+    console.error("Failed to fetch user info:", error);
+  }
+}
+
 function createCheckbox(globalIndex) {
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
@@ -34,6 +70,15 @@ function createCheckbox(globalIndex) {
   checkbox.checked = allCheckboxStates[globalIndex];
   checkbox.className =
     "size-6 cursor-pointer rounded border border-gray-600 bg-gray-800 appearance-none checked:bg-indigo-500 checked:border-indigo-400 hover:border-indigo-400 transition-all duration-150 focus:ring-1 focus:ring-indigo-500/50";
+
+  if (!isAuthenticated) {
+    checkbox.classList.add("checkbox-disabled");
+    checkbox.addEventListener("click", (event) => {
+      event.preventDefault();
+      alert("Please login to interact with checkboxes");
+    });
+    return checkbox;
+  }
 
   checkbox.addEventListener("change", (event) => {
     const isChecked = event.target.checked;
@@ -74,11 +119,24 @@ function renderMoreCheckboxes() {
 }
 
 function renderInitialCheckboxes() {
+  checkboxContainer.innerHTML = "";
+  lastRenderedIndex = 0;
+
   for (let i = 0; i < render_ahead; i++) {
     const checkbox = createCheckbox(i);
     checkboxContainer.appendChild(checkbox);
   }
   lastRenderedIndex = render_ahead;
+}
+
+function updateCheckboxStates() {
+  const checkboxes = checkboxContainer.querySelectorAll('input[type="checkbox"]');
+  checkboxes.forEach((checkbox) => {
+    const index = parseInt(checkbox.id.replace("checkbox-", "")) - 1;
+    if (index >= 0 && index < allCheckboxStates.length) {
+      checkbox.checked = allCheckboxStates[index];
+    }
+  });
 }
 
 checkboxGrid.addEventListener("scroll", () => {
@@ -117,7 +175,27 @@ socket.on("rate-limited", (data) => {
   updateStats();
 });
 
+socket.on("auth-required", () => {
+  alert("Please login to interact with checkboxes");
+  fetchCurrentUser();
+});
+
+loginBtn.addEventListener("click", () => {
+  window.location.href = "/auth/login";
+});
+
+logoutBtn.addEventListener("click", async () => {
+  try {
+    await fetch("/auth/logout", { method: "POST" });
+    window.location.reload();
+  } catch (error) {
+    console.error("Logout failed:", error);
+  }
+});
+
 window.addEventListener("load", async () => {
+  await fetchCurrentUser();
+
   const response = await fetch("checkboxes", { method: "GET" });
   const data = await response.json();
   if (data && data.checkboxes) {
