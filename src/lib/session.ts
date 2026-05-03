@@ -21,8 +21,6 @@ redis.on("error", (error) => {
   console.error("[session] Redis unavailable, falling back to MemoryStore:", error.message);
 });
 
-const memoryStore = new session.MemoryStore();
-
 const redisSessionMiddleware = session({
   store: redisStore,
   secret: config.session.secret,
@@ -37,19 +35,28 @@ const redisSessionMiddleware = session({
   },
 });
 
-const memorySessionMiddleware = session({
-  store: memoryStore,
-  secret: config.session.secret,
-  proxy: true,
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: config.nodeEnv === "production" ? "auto" : false,
-    httpOnly: true,
-    maxAge: 1000 * 60 * 60 * 24 * 7,
-    sameSite: "lax",
-  },
-});
+let memorySessionMiddleware: ReturnType<typeof session> | null = null;
+
+function getMemorySessionMiddleware(): ReturnType<typeof session> {
+  if (memorySessionMiddleware) return memorySessionMiddleware;
+
+  const memoryStore = new session.MemoryStore();
+  memorySessionMiddleware = session({
+    store: memoryStore,
+    secret: config.session.secret,
+    proxy: true,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: config.nodeEnv === "production" ? "auto" : false,
+      httpOnly: true,
+      maxAge: 1000 * 60 * 60 * 24 * 7,
+      sameSite: "lax",
+    },
+  });
+
+  return memorySessionMiddleware;
+}
 
 export const sessionMiddleware = (req: Request, res: Response, next: NextFunction) => {
   if (isRedisStoreHealthy) {
@@ -57,5 +64,5 @@ export const sessionMiddleware = (req: Request, res: Response, next: NextFunctio
     return;
   }
 
-  memorySessionMiddleware(req, res, next);
+  getMemorySessionMiddleware()(req, res, next);
 };
