@@ -41,11 +41,13 @@ function updateAuthUI() {
     userInfo.classList.add("flex");
     userName.textContent = currentUser.name || currentUser.email || "User";
     authWarning.classList.add("hidden");
+    authWarning.classList.remove("inline-block");
   } else {
     loginBtn.classList.remove("hidden");
     userInfo.classList.add("hidden");
     userInfo.classList.remove("flex");
     authWarning.classList.remove("hidden");
+    authWarning.classList.add("inline-block");
   }
 }
 
