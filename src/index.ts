@@ -38,6 +38,12 @@ subscriber.on("message", (channel, data) => {
 });
 
 io.use((socket, next) => {
+  sessionMiddleware(socket.request as any, {} as any, (err?: unknown) => {
+    next(err as Error | undefined);
+  });
+});
+
+io.use((socket, next) => {
   const session = socket.request.session;
   if (session?.user) {
     socket.data.user = session.user;
