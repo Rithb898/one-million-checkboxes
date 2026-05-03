@@ -7,6 +7,7 @@ import { redis } from "./redis.js";
 const redisStore = new RedisStore({
   client: redis,
   prefix: "sess:",
+  disableTTL: true,
 });
 
 let isRedisStoreHealthy = true;
