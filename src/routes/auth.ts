@@ -18,9 +18,20 @@ authRouter.get("/login", async (req: Request, res: Response) => {
     const state = generateState();
     req.session.state = state;
 
-    const authUrl = await getAuthorizationUrl(state);
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error:", err);
+        res.status(500).json({ error: "Failed to save session" });
+        return;
+      }
 
-    res.redirect(authUrl);
+      getAuthorizationUrl(state).then((authUrl) => {
+        res.redirect(authUrl);
+      }).catch((error) => {
+        console.error("Get auth URL error:", error);
+        res.status(500).json({ error: "Failed to generate auth URL" });
+      });
+    });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ error: "Failed to initiate login" });
@@ -41,8 +52,11 @@ authRouter.get("/callback", async (req: Request, res: Response) => {
       return;
     }
 
-    if (state !== req.session.state) {
-      res.status(400).json({ error: "Invalid state parameter" });
+    const sessionState = req.session.state;
+    console.log("Callback - session state:", sessionState, "received state:", state);
+
+    if (!sessionState || state !== sessionState) {
+      res.status(400).json({ error: "Invalid state parameter", debug: { sessionState, receivedState: state } });
       return;
     }
 
@@ -56,7 +70,12 @@ authRouter.get("/callback", async (req: Request, res: Response) => {
     req.session.user = user;
     req.session.tokenSet = tokenSet;
 
-    res.redirect("/");
+    req.session.save((err) => {
+      if (err) {
+        console.error("Session save error on callback:", err);
+      }
+      res.redirect("/");
+    });
   } catch (error) {
     console.error("Callback error:", error);
     res.status(500).json({ error: "Authentication failed" });

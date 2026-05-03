@@ -12,13 +12,13 @@ const store = new RedisStore({
 const rawSessionMiddleware = session({
   store,
   secret: config.session.secret,
-  resave: false,
-  saveUninitialized: false,
+  resave: true,
+  saveUninitialized: true,
   cookie: {
     secure: config.nodeEnv === "production",
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24 * 7,
-    sameSite: config.nodeEnv === "production" ? "lax" : false,
+    sameSite: "lax",
   },
 });
 
