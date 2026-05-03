@@ -8,6 +8,7 @@ import { publisher, redis, subscriber } from "./lib/redis.js";
 import { sessionMiddleware } from "./lib/session.js";
 import { authRouter } from "./routes/auth.js";
 import { requireAuth } from "./middleware/auth.js";
+import { httpRateLimit } from "./middleware/rate-limit.js";
 
 const checkbox_size = 1000000;
 const checkbox_state_key = "one-million-checkboxes:checkboxes";
@@ -26,6 +27,7 @@ io.attach(server);
 app.set("trust proxy", 1);
 
 app.use(sessionMiddleware);
+app.use(httpRateLimit);
 
 app.use("/auth", authRouter);
 
