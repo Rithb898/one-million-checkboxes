@@ -20,9 +20,7 @@ authRouter.get("/login", async (req: Request, res: Response) => {
 
     req.session.save((err) => {
       if (err) {
-        console.error("Session save error:", err);
-        res.status(500).json({ error: "Failed to save session" });
-        return;
+        console.error("Session save error on /auth/login; continuing with unsaved session state:", err);
       }
 
       getAuthorizationUrl(state).then((authUrl) => {
