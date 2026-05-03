@@ -1,5 +1,5 @@
 import session from "express-session";
-import RedisStore from "connect-redis";
+import { RedisStore } from "connect-redis";
 import type { Request, Response, NextFunction } from "express";
 import { config } from "../config/index.js";
 import { redis } from "./redis.js";
