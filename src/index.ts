@@ -46,7 +46,13 @@ io.use((socket, next) => {
 });
 
 io.on("connection", (socket) => {
-  console.log("A user connected", socket.id, socket.data.user ? `(authenticated as ${socket.data.user.id})` : "(anonymous)");
+  console.log(
+    "A user connected",
+    socket.id,
+    socket.data.user
+      ? `(authenticated as ${socket.data.user.id})`
+      : "(anonymous)",
+  );
 
   socket.on("disconnect", () => {
     rateLimits.delete(socket.id);
