@@ -25,10 +25,11 @@ const memoryStore = new session.MemoryStore();
 const redisSessionMiddleware = session({
   store: redisStore,
   secret: config.session.secret,
+  proxy: true,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: config.nodeEnv === "production",
+    secure: config.nodeEnv === "production" ? "auto" : false,
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24 * 7,
     sameSite: "lax",
@@ -38,10 +39,11 @@ const redisSessionMiddleware = session({
 const memorySessionMiddleware = session({
   store: memoryStore,
   secret: config.session.secret,
+  proxy: true,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: config.nodeEnv === "production",
+    secure: config.nodeEnv === "production" ? "auto" : false,
     httpOnly: true,
     maxAge: 1000 * 60 * 60 * 24 * 7,
     sameSite: "lax",

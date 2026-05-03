@@ -12,11 +12,42 @@ import {
 } from "../services/oidc.js";
 
 export const authRouter: RouterType = Router();
+const OIDC_STATE_COOKIE = "oidc_state";
+
+function readCookie(req: Request, name: string): string | undefined {
+  const cookieHeader = req.headers.cookie;
+  if (!cookieHeader) return undefined;
+
+  const parts = cookieHeader.split(";").map((part) => part.trim());
+  for (const part of parts) {
+    const [key, ...rest] = part.split("=");
+    if (key === name) {
+      return decodeURIComponent(rest.join("="));
+    }
+  }
+
+  return undefined;
+}
+
+function isSecureRequest(req: Request): boolean {
+  if (req.secure) return true;
+  const forwardedProto = req.headers["x-forwarded-proto"];
+  if (typeof forwardedProto === "string") return forwardedProto.includes("https");
+  if (Array.isArray(forwardedProto)) return forwardedProto.some((value) => value.includes("https"));
+  return false;
+}
 
 authRouter.get("/login", async (req: Request, res: Response) => {
   try {
     const state = generateState();
     req.session.state = state;
+    res.cookie(OIDC_STATE_COOKIE, state, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production" ? isSecureRequest(req) : false,
+      sameSite: "lax",
+      maxAge: 1000 * 60 * 10,
+      path: "/auth",
+    });
 
     req.session.save((err) => {
       if (err) {
@@ -51,14 +82,17 @@ authRouter.get("/callback", async (req: Request, res: Response) => {
     }
 
     const sessionState = req.session.state;
+    const cookieState = readCookie(req, OIDC_STATE_COOKIE);
+    const expectedState = sessionState ?? cookieState;
     console.log("Callback - session state:", sessionState, "received state:", state);
 
-    if (!sessionState || state !== sessionState) {
-      res.status(400).json({ error: "Invalid state parameter", debug: { sessionState, receivedState: state } });
+    if (!expectedState || state !== expectedState) {
+      res.status(400).json({ error: "Invalid state parameter", debug: { sessionState, cookieState, receivedState: state } });
       return;
     }
 
     delete req.session.state;
+    res.clearCookie(OIDC_STATE_COOKIE, { path: "/auth" });
 
     const tokenSet = await exchangeCodeForTokens(code);
 
